@@ -59,6 +59,15 @@ impl FstTextNormalizer {
     /// # Returns
     /// Normalized text string
     pub fn normalize(&self, input: &str) -> Result<String> {
+        self.apply(input, false)
+    }
+
+    /// Execute a byte-labelled grammar, failing rather than returning internal tokens.
+    pub fn normalize_strict(&self, input: &str) -> Result<String> {
+        self.apply(input, true)
+    }
+
+    fn apply(&self, input: &str, strict: bool) -> Result<String> {
         if input.is_empty() {
             return Ok(String::new());
         }
@@ -83,6 +92,11 @@ impl FstTextNormalizer {
 
         // Check if compose result is empty (no match)
         if composed.num_states() == 0 {
+            if strict {
+                return Err(WeTextError::FstOperationError(
+                    "grammar has no matching path".into(),
+                ));
+            }
             // If no match, return original input (same as kaldifst behavior)
             return Ok(input.to_string());
         }
@@ -93,10 +107,30 @@ impl FstTextNormalizer {
 
         // Check if shortest_path result is empty
         if best_path.num_states() == 0 {
+            if strict {
+                return Err(WeTextError::FstOperationError(
+                    "grammar has no successful path".into(),
+                ));
+            }
             return Ok(input.to_string());
         }
 
         // Step 4: Extract output string using decode_linear_fst
+        if strict {
+            let path = decode_linear_fst(&best_path)
+                .map_err(|error| WeTextError::FstOperationError(error.to_string()))?;
+            let bytes: std::result::Result<Vec<u8>, _> = path
+                .olabels
+                .iter()
+                .filter(|&&label| label != EPS_LABEL)
+                .map(|&label| u8::try_from(label))
+                .collect();
+            return String::from_utf8(
+                bytes
+                    .map_err(|_| WeTextError::FstOperationError("non-byte output label".into()))?,
+            )
+            .map_err(|error| WeTextError::FstOperationError(error.to_string()));
+        }
         self.fst_to_string(&best_path)
     }
 
@@ -165,5 +199,27 @@ mod tests {
         let labels: Vec<Label> = "hello".chars().map(|c| c as Label).collect();
         let fst: VectorFst<TropicalWeight> = acceptor(&labels, TropicalWeight::one());
         assert_eq!(fst.num_states(), 6); // 5 chars + 1 (start state)
+    }
+
+    #[test]
+    fn strict_execution_rejects_missing_paths_and_invalid_utf8() {
+        let empty = FstTextNormalizer {
+            fst: VectorFst::new(),
+        };
+        assert!(empty.normalize_strict("x").is_err());
+        assert_eq!(empty.normalize("x").unwrap(), "x");
+        let mut graph = VectorFst::new();
+        let start = graph.add_state();
+        let end = graph.add_state();
+        graph.set_start(start).unwrap();
+        graph.set_final(end, TropicalWeight::one()).unwrap();
+        graph
+            .add_tr(
+                start,
+                Tr::new(b'x' as Label, 255, TropicalWeight::one(), end),
+            )
+            .unwrap();
+        let invalid = FstTextNormalizer { fst: graph };
+        assert!(invalid.normalize_strict("x").is_err());
     }
 }
