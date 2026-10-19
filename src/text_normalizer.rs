@@ -24,6 +24,13 @@ pub struct FstTextNormalizer {
 }
 
 impl FstTextNormalizer {
+    /// Load bytes already bound to a caller-verified asset digest.
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
+        Ok(Self {
+            fst: VectorFst::<TropicalWeight>::load(bytes)
+                .map_err(|e| WeTextError::FstLoadError(e.to_string()))?,
+        })
+    }
     /// Load FST from file
     ///
     /// # Arguments

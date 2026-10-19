@@ -14,6 +14,13 @@ pub struct CompiledChineseItn {
 }
 
 impl CompiledChineseItn {
+    /// Load the exact buffers verified by the asset-owning Adapter, without reopening paths.
+    pub fn from_bytes(tagger: &[u8], verbalizer: &[u8]) -> Result<Self> {
+        Ok(Self {
+            tagger: Arc::new(FstTextNormalizer::from_bytes(tagger)?),
+            verbalizer: Arc::new(FstTextNormalizer::from_bytes(verbalizer)?),
+        })
+    }
     /// Load both exact profile assets eagerly. No language inference or fallback.
     pub fn from_files(tagger: &Path, verbalizer: &Path) -> Result<Self> {
         Ok(Self {

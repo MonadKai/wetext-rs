@@ -27,6 +27,7 @@ pub use compiled_itn::CompiledChineseItn;
 mod contractions;
 mod error;
 mod normalizer;
+pub mod plate;
 mod text_normalizer;
 mod token_parser;
 

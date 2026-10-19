@@ -1,6 +1,9 @@
 # number_plate v1.5 qualification profile
 
-Status: oracle frozen; Rust semantics and full-text runtime not yet qualified.
+Status: Rust structured fields and span plans pass the 83 frozen cases and
+34,136 historical snapshots. Complete Unicode scalar-view digest and concurrent
+distinct-lexicon checks pass. Full-text corpus qualification is still pending;
+the 83 full-text fixtures are only a preliminary check.
 
 The oracle is the delivered `wetextprocessing==1.2.0+plate.1` wheel, using
 `pynini==2.1.7`, `importlib_resources==6.5.2`, Python 3.12.7 / Unicode 15.0.0.
@@ -37,3 +40,18 @@ The 83 checked-in cases cover portable positives, explicit negatives, Unicode,
 escaping, preservation and correction. Shared normalized text is never fed back
 as original input. This fork owns both the rules and their complete renderer;
 Parret's Adapter must not independently reorder them.
+
+Rust qualification runner (the algorithm receives only `text`):
+
+```bash
+cargo build --offline --locked --example plate_replay
+target/debug/examples/plate_replay < /tmp/plate-corpus-inputs.jsonl > /tmp/plate-rust.jsonl
+python tools/plate_diff.py /tmp/plate-oracle-corpus.jsonl /tmp/plate-rust.jsonl
+```
+
+`PlateProfile::structured` does not claim generic full-text normalization.
+`with_base` binds the exact exported graphs; it preserves one plan while
+normalizing only unrelated fragments and retained context. `CompiledChineseItn`
+fails on missing graph paths or invalid byte/token output instead of returning
+internal FST tokens. Registry consumers can load verified byte buffers without
+reopening asset paths. Profiles own their effective Unicode/rendering parameters.

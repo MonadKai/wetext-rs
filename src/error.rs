@@ -5,6 +5,9 @@ use thiserror::Error;
 /// WeText error types
 #[derive(Error, Debug)]
 pub enum WeTextError {
+    /// Profile metadata or lexicon does not match this executable's contract.
+    #[error("Invalid profile: {0}")]
+    InvalidProfile(String),
     /// FST file not found
     #[error("FST file not found: {0}")]
     FstNotFound(String),
