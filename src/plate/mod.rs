@@ -49,9 +49,13 @@ impl PlateProfile {
     /// Effective profile parameters owned alongside rules and rendering order.
     pub fn parameters(&self) -> serde_json::Value {
         use sha2::Digest;
-        serde_json::json!({"rendering":if self.has_full_text() {"full_text"} else {"structured_only"},
+        let mut parameters = serde_json::json!({"rendering":if self.has_full_text() {"full_text"} else {"structured_only"},
             "unicode":"15.0.0","unicode_policy_sha256":format!("{:x}",sha2::Sha256::digest(include_bytes!("../../profiles/number_plate_v1_5/unicode-15.json"))),
-            "semantic_version":PLATE_SEMANTIC_VERSION,"max_explicit_kind_nesting":64})
+            "semantic_version":PLATE_SEMANTIC_VERSION,"max_explicit_kind_nesting":64});
+        if self.has_full_text() {
+            parameters["base"] = CompiledChineseItn::delivery_parameters();
+        }
+        parameters
     }
     /// Structured-only profile: unrelated text is preserved, not generic ITN.
     pub fn structured(lexicon_json: &str) -> Result<Self> {

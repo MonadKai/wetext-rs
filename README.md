@@ -283,6 +283,39 @@ This Rust implementation is designed to be compatible with the Python [wetext](h
 
 ---
 
+## Delivery plate profiles
+
+The owner fork adds `plate::PlateProfile` and `CompiledChineseItn` independently
+from the legacy automatic-language normalizer. Chinese must be selected
+explicitly by callers. Structured-only preserves unrelated text; `with_base`
+binds complete delivery rendering. Fields always come from one accepted span
+plan. Original span coordinates are UTF-8 byte offsets. A null unique plate is
+not an abstention reason.
+
+The frozen wheel, options and Unicode policy live under
+`profiles/number_plate_v1_5/`; `tools/plate_oracle.py` runs only original texts,
+`tools/plate_diff.py --full-text` compares every result and plan field, and
+`tools/export_plate_fsts.py` exports the same-option base grammar. Export and
+oracle deliberately prime a fresh cache then reload/optimize as delivery does
+on a cache hit: initial-build and cached graphs can choose different
+same-weight numeric segmentations. The profile identity records this policy.
+Do not replace it with an arbitrary legacy FST bundle. Rust runtime builds
+never construct or download FSTs.
+
+Explicit real-asset regression (94 snapshots):
+
+```bash
+WETEXT_TAGGER=/path/to/cached-export/zh_itn_tagger.fst \
+WETEXT_VERBALIZER=/path/to/cached-export/zh_itn_verbalizer.fst \
+cargo test --offline --locked --test plate_full -- --ignored
+```
+
+Explicit symbol-kind nesting is bounded at 64 and returns `InvalidInput` above
+that boundary; it does not turn resource exhaustion into a no-plate result.
+Unicode 15 normalization/uppercase/classification follows the frozen Python
+oracle rather than the host's newer character database. Check the consuming
+Parret implementation plan for revision-specific corpus and ASR qualification.
+
 ## Development
 
 ### Running Tests

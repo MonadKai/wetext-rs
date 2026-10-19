@@ -14,6 +14,13 @@ pub struct CompiledChineseItn {
 }
 
 impl CompiledChineseItn {
+    /// Asset recipe/options for this delivery contract, not inferred from arbitrary graphs.
+    pub fn delivery_parameters() -> serde_json::Value {
+        serde_json::json!({"remove_interjections":true,"enable_standalone_number":true,
+            "enable_0_to_9":false,"enable_million":false,"enable_plate_semantics":false,
+            "cache_mode":"reload_then_optimize"})
+    }
+
     /// Load the exact buffers verified by the asset-owning Adapter, without reopening paths.
     pub fn from_bytes(tagger: &[u8], verbalizer: &[u8]) -> Result<Self> {
         Ok(Self {

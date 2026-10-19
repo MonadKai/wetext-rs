@@ -31,10 +31,17 @@ def freeze(bundle):
                 raise ValueError(f"source differs from wheel: {name}")
     return dict(schema="wetext.plate-oracle.v1", wheel_sha256=digest(wheel.read_bytes()),
                 package="1.2.0+plate.1", semantic_version="plate_semantic_v1_5",
-                options=OPTIONS, source_sha256=hashes,
+                options=OPTIONS, base_cache_mode="reload_then_optimize", source_sha256=hashes,
                 dependencies={name: importlib.metadata.version(name) for name in
                               ["pynini", "importlib_resources", "WeTextProcessing"]},
                 python=platform.python_version(), unicode=__import__("unicodedata").unidata_version)
+
+
+def load_cached_normalizer(cache_dir, options):
+    """Freeze delivery cache-hit behavior; cold-build tie ordering can differ."""
+    from itn.chinese.inverse_normalizer import InverseNormalizer
+    InverseNormalizer(cache_dir=cache_dir, **options)
+    return InverseNormalizer(cache_dir=cache_dir, **options)
 
 
 def main():
@@ -66,8 +73,7 @@ def main():
     if not args.structured_only:
         if args.cache_dir is None:
             parser.error("--cache-dir required for full text")
-        from itn.chinese.inverse_normalizer import InverseNormalizer
-        normalizer = InverseNormalizer(cache_dir=args.cache_dir, **OPTIONS)
+        normalizer = load_cached_normalizer(args.cache_dir, OPTIONS)
     ids = set()
     with args.input.open() as stream:
         for number, line in enumerate(stream, 1):

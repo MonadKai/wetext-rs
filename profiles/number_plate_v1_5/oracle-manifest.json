@@ -26,5 +26,6 @@
     "WeTextProcessing": "1.2.0+plate.1"
   },
   "python": "3.12.7",
-  "unicode": "15.0.0"
+  "unicode": "15.0.0",
+  "base_cache_mode": "reload_then_optimize"
 }
