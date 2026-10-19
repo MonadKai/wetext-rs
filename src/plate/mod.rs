@@ -51,7 +51,7 @@ impl PlateProfile {
         use sha2::Digest;
         serde_json::json!({"rendering":if self.has_full_text() {"full_text"} else {"structured_only"},
             "unicode":"15.0.0","unicode_policy_sha256":format!("{:x}",sha2::Sha256::digest(include_bytes!("../../profiles/number_plate_v1_5/unicode-15.json"))),
-            "semantic_version":PLATE_SEMANTIC_VERSION})
+            "semantic_version":PLATE_SEMANTIC_VERSION,"max_explicit_kind_nesting":64})
     }
     /// Structured-only profile: unrelated text is preserved, not generic ITN.
     pub fn structured(lexicon_json: &str) -> Result<Self> {
@@ -120,6 +120,28 @@ impl PlateProfile {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn deeply_nested_symbol_kinds_are_execution_errors_not_stack_overflows() {
+        let mut engine = PlateProfile::structured(include_str!(
+            "../../profiles/number_plate_v1_5/lexicon.json"
+        ))
+        .unwrap();
+        assert!(matches!(
+            engine.normalize(&format!("苏B{}J一二三四", "字母".repeat(65))),
+            Err(crate::error::WeTextError::InvalidInput(_))
+        ));
+        assert_eq!(
+            engine
+                .normalize(&format!("苏B{}J一二三四", "字母".repeat(64)))
+                .unwrap()
+                .plate,
+            Some("苏BJ1234".into())
+        );
+        assert_eq!(
+            engine.normalize("苏B丁钩一二三四").unwrap().plate,
+            Some("苏BJ1234".into())
+        );
+    }
     #[test]
     fn mutable_workers_and_distinct_lexicons_do_not_cross_contaminate() {
         let lexicon = include_str!("../../profiles/number_plate_v1_5/lexicon.json");

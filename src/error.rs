@@ -8,6 +8,9 @@ pub enum WeTextError {
     /// Profile metadata or lexicon does not match this executable's contract.
     #[error("Invalid profile: {0}")]
     InvalidProfile(String),
+    /// A text snapshot exceeds a documented parser resource bound.
+    #[error("Invalid input: {0}")]
+    InvalidInput(String),
     /// FST file not found
     #[error("FST file not found: {0}")]
     FstNotFound(String),

@@ -52,6 +52,7 @@ impl Semantics {
     }
 
     pub fn spans(&self, raw: &str) -> Result<Vec<PlateSpan>> {
+        self.check_input(raw)?;
         let result = self.parse(raw);
         let s = &result.text;
         let candidates = &result.candidates;

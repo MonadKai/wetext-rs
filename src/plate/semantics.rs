@@ -162,6 +162,29 @@ struct Atom {
 }
 
 impl Semantics {
+    pub fn check_input(&self, raw: &str) -> Result<()> {
+        let normalized = self.unicode.view(raw);
+        let mut pos = 0;
+        while pos < normalized.len() {
+            let mut end = pos;
+            let mut nesting = 0;
+            while let Some(kind) = self.rules.kind.find(&normalized[end..]) {
+                nesting += 1;
+                if nesting > 64 {
+                    return Err(WeTextError::InvalidInput(
+                        "explicit symbol-kind nesting exceeds 64".into(),
+                    ));
+                }
+                end = skip(&normalized, end + kind.end());
+            }
+            pos = if end > pos {
+                end
+            } else {
+                pos + normalized[pos..].chars().next().map_or(1, char::len_utf8)
+            };
+        }
+        Ok(())
+    }
     pub fn new(json: &str) -> Result<Self> {
         let lex: Lexicon =
             serde_json::from_str(json).map_err(|e| WeTextError::InvalidProfile(e.to_string()))?;

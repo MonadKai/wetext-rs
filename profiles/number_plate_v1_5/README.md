@@ -41,6 +41,10 @@ escaping, preservation and correction. Shared normalized text is never fed back
 as original input. This fork owns both the rules and their complete renderer;
 Parret's Adapter must not independently reorder them.
 
+Explicit symbol-kind prefixes are limited to 64 nested declarations. Deeper
+input is an execution error before recursive parsing, rather than an empty
+plate or a process stack overflow. The limit is part of effective parameters.
+
 Rust qualification runner (the algorithm receives only `text`):
 
 ```bash
