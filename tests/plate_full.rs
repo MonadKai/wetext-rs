@@ -5,16 +5,29 @@ use wetext_rs::{plate::PlateProfile, CompiledChineseItn};
 #[test]
 #[ignore = "requires WETEXT_TAGGER and WETEXT_VERBALIZER from the frozen cached export"]
 fn frozen_full_text_and_cache_path_order_match_oracle() {
+    check_frozen(false);
+}
+
+#[test]
+#[ignore = "requires frozen cached export assets"]
+fn complete_request_graph_matches_frozen_fields_plans_and_text() {
+    check_frozen(true);
+}
+
+fn check_frozen(request: bool) {
+    let base = CompiledChineseItn::from_files(
+        &PathBuf::from(std::env::var("WETEXT_TAGGER").unwrap()),
+        &PathBuf::from(std::env::var("WETEXT_VERBALIZER").unwrap()),
+    )
+    .unwrap();
     let mut engine =
         PlateProfile::structured(include_str!("../profiles/number_plate_v1_5/lexicon.json"))
-            .unwrap()
-            .with_base(
-                CompiledChineseItn::from_files(
-                    &PathBuf::from(std::env::var("WETEXT_TAGGER").unwrap()),
-                    &PathBuf::from(std::env::var("WETEXT_VERBALIZER").unwrap()),
-                )
-                .unwrap(),
-            );
+            .unwrap();
+    engine = if request {
+        engine.with_request_base(base)
+    } else {
+        engine.with_base(base)
+    };
     let mut count = 0;
     for (inputs, outputs) in [
         (

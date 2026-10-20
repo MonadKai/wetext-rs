@@ -1,9 +1,12 @@
 # number_plate v1.5 qualification profile
 
-Status: Rust structured fields and span plans pass the 83 frozen cases and
-34,136 historical snapshots. Complete Unicode scalar-view digest and concurrent
-distinct-lexicon checks pass. Full-text corpus qualification is still pending;
-the 83 full-text fixtures are only a preliminary check.
+Status: baseline `4c396e8` passes fields/plans and complete text on the frozen
+34,136 oracle snapshots. Two new offline raw-text full-string differences are
+strict failures of the added plate migration renderer; nine older saved-text
+alternatives have their separate historical scope. See the local
+[migration issue](../../docs/issues/plate-request-rendering-compatibility.md).
+The candidate request renderer is under qualification, not a released profile
+or a universal executor correctness claim.
 
 The oracle is the delivered `wetextprocessing==1.2.0+plate.1` wheel, using
 `pynini==2.1.7`, `importlib_resources==6.5.2`, Python 3.12.7 / Unicode 15.0.0.
@@ -59,3 +62,15 @@ normalizing only unrelated fragments and retained context. `CompiledChineseItn`
 fails on missing graph paths or invalid byte/token output instead of returning
 internal FST tokens. Registry consumers can load verified byte buffers without
 reopening asset paths. Profiles own their effective Unicode/rendering parameters.
+
+`with_request_base` is the separate full.2 candidate: construct/optimize the
+complete delivered request before choosing tagger paths, reorder tokens, then
+execute the complete semantic/literal verbalizer union. Retained context uses
+the delivered semantic dispatch; fields still come from the original outer
+plan. Its effective rendering parameter is `full_text_request_graph_v1`.
+`plate_replay --full-request tagger.fst verbalizer.fst` selects it explicitly;
+`--full` and `with_base` retain legacy full.1 behavior. Do not overwrite old
+executables or use the active evaluation's Cargo target when building it.
+Semantics, spans, lexicon and the delivered result version stay unchanged.
+All original/new snapshots require separate strict field/plan/text comparison
+before any Parret binding or real-service qualification.

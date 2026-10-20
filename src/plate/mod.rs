@@ -39,6 +39,7 @@ pub struct PlateResult {
 pub struct PlateProfile {
     semantics: Arc<Semantics>,
     base: Option<CompiledChineseItn>,
+    request_rendering: bool,
 }
 
 impl PlateProfile {
@@ -55,6 +56,9 @@ impl PlateProfile {
         if self.has_full_text() {
             parameters["base"] = CompiledChineseItn::delivery_parameters();
         }
+        if self.request_rendering {
+            parameters["rendering"] = "full_text_request_graph_v1".into();
+        }
         parameters
     }
     /// Structured-only profile: unrelated text is preserved, not generic ITN.
@@ -62,11 +66,19 @@ impl PlateProfile {
         Ok(Self {
             semantics: Arc::new(Semantics::new(lexicon_json)?),
             base: None,
+            request_rendering: false,
         })
     }
     /// Bind exact base graphs for complete rendering order. Never inferred at runtime.
     pub fn with_base(mut self, base: CompiledChineseItn) -> Self {
         self.base = Some(base);
+        self.request_rendering = false;
+        self
+    }
+    /// Candidate complete delivered request-graph order; legacy full.1 stays explicit.
+    pub fn with_request_base(mut self, base: CompiledChineseItn) -> Self {
+        self.base = Some(base);
+        self.request_rendering = true;
         self
     }
     /// Whether this instance includes generic full-sentence ITN.
@@ -89,6 +101,42 @@ impl PlateProfile {
         Ok((result, plan))
     }
     fn render(&mut self, raw: &str, plan: &[PlateSpan]) -> Result<PlateResult> {
+        if self.request_rendering {
+            let mut contexts = Vec::with_capacity(plan.len());
+            for span in plan {
+                contexts.push(if span.preserved_context.is_empty() {
+                    String::new()
+                } else {
+                    // Processor.normalize(normalizer, context) retains semantic dispatch upstream.
+                    self.normalize(&span.preserved_context)?.text
+                });
+            }
+            let text = self
+                .base
+                .as_mut()
+                .ok_or_else(|| {
+                    crate::error::WeTextError::InvalidProfile(
+                        "request renderer has no base graphs".into(),
+                    )
+                })?
+                .normalize_plate_request(raw, plan, &contexts)?;
+            let mut plates = Vec::new();
+            for span in plan {
+                if span.accepted && !plates.contains(&span.output) {
+                    plates.push(span.output.clone());
+                }
+            }
+            return Ok(PlateResult {
+                text,
+                plate: if plates.len() == 1 {
+                    plates.first().cloned()
+                } else {
+                    None
+                },
+                plates,
+                version: PLATE_SEMANTIC_VERSION.into(),
+            });
+        }
         let mut text = String::new();
         let mut plates = Vec::new();
         let mut pos = 0;

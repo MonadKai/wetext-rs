@@ -24,6 +24,14 @@ pub struct FstTextNormalizer {
 }
 
 impl FstTextNormalizer {
+    pub(crate) fn graph(&self) -> &VectorFst<TropicalWeight> {
+        &self.fst
+    }
+
+    pub(crate) fn from_graph(fst: VectorFst<TropicalWeight>) -> Self {
+        Self { fst }
+    }
+
     /// Load bytes already bound to a caller-verified asset digest.
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
         Ok(Self {

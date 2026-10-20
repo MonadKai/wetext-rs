@@ -17,13 +17,15 @@ fn main() -> anyhow::Result<()> {
         PlateProfile::structured(include_str!("../profiles/number_plate_v1_5/lexicon.json"))?;
     if !args.is_empty() {
         anyhow::ensure!(
-            args.len() == 3 && args[0] == "--full",
-            "usage: plate_replay [--full tagger.fst verbalizer.fst]"
+            args.len() == 3 && matches!(args[0].as_str(), "--full" | "--full-request"),
+            "usage: plate_replay [--full|--full-request tagger.fst verbalizer.fst]"
         );
-        profile = profile.with_base(CompiledChineseItn::from_files(
-            Path::new(&args[1]),
-            Path::new(&args[2]),
-        )?);
+        let base = CompiledChineseItn::from_files(Path::new(&args[1]), Path::new(&args[2]))?;
+        profile = if args[0] == "--full-request" {
+            profile.with_request_base(base)
+        } else {
+            profile.with_base(base)
+        };
     }
     let mut ids = std::collections::HashSet::new();
     let stdout = io::stdout();
