@@ -1,6 +1,7 @@
 # PLATE-MIGRATION-1: reproduce delivered complete request rendering
 
-Status: local issue draft and compatibility implementation in progress. No remote
+Status: compatibility implementation verified on listed snapshot cohorts; new repaired-C
+and actual service gates remain open. No remote
 issue or release. This concerns the plate migration added in this fork, not an
 established upstream wetext-rs bug or an error in number_plate_v1.0.0.
 Parret's `docs/plans/itn-multiple-implementations-plan.md` is the sole cross-repo
@@ -70,3 +71,32 @@ Retain every failure. Bind the new commit, Cargo.lock/features, artifacts/assets
 and effective parameters. Real Adapter/normal-final/fallback/BR and 8/16 kHz
 service qualification remains separate from snapshot replay. Link the eventual
 fix commit and results here only after actual qualification.
+
+## Implemented compatibility fix and scoped evidence
+
+Fix commit: `47cc2536ee9e31c39fdcfb69bf0f0f900b02c8a3` (Refs
+PLATE-MIGRATION-1). The old full.1 constructor/runner remain explicit; request
+rendering is `with_request_base` / `--full-request`, effective rendering parameter
+`full_text_request_graph_v1`. No semantic, span, Unicode, dictionary or dependency
+lock bytes changed from `4c396e8`.
+
+Separate release replay artifact SHA256
+`67cc5435eabd8310b71a8ad7bcba1084bbbe5124fd63dc5d4261213439829a5a`:
+20 unit tests, both 94-case real-asset fixture branches, all-target clippy, fmt,
+differential self-tests and locked/offline build passed. Two fixed-range review
+axes found no actionable finding. Strict original-wheel replay passed on frozen
+34,136, B 34,136 and first-C 35,409 original snapshots, plus 22 synthetic edge
+inputs: zero structured-field, final-plan or full-text differences. This resolves
+the two old B text failures without changing rules or excusing tied paths.
+
+Receipts: restricted `full-text-request-v2/{fork-validation,corpus-validation}.json`
+and `request-edge/validation.json`; public Parret
+`docs/experiments/evidence/number-plate-itn-20261019/c-request-candidate.json`.
+They bind inputs/oracle/outputs, actual source/executable/lock/compiler/features
+and assets. 103,681 corpus row comparisons are not independent recordings.
+
+Do not close general service qualification: repaired-client C is still capturing
+under its unchanged old identity; its new raw snapshots, new Adapter/service
+identity and actual 8/16 kHz normal-final/fallback/BR checks remain pending.
+The old nine saved-string alternatives keep their different cache/runtime
+provenance. No claim of universal executor correctness or delivery error follows.
