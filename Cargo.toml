@@ -37,4 +37,3 @@ serde = { version = "1", features = ["derive"] }
 default = []
 # Embed FST files into the binary
 embedded-fsts = []
-
