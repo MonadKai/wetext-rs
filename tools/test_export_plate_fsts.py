@@ -15,7 +15,7 @@ from plate_oracle import CORE, digest
 
 
 class ExportSourceTests(unittest.TestCase):
-    def run_export(self, changed=None):
+    def run_export(self, changed=None, split_tn=False):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             hashes = {}
@@ -33,12 +33,18 @@ class ExportSourceTests(unittest.TestCase):
             graph = types.SimpleNamespace(write=lambda name: Path(name).write_bytes(b"synthetic"))
             normalizer = types.SimpleNamespace(tagger=graph, verbalizer=graph)
             package = types.SimpleNamespace(__file__=str(root / "itn/__init__.py"))
+            tn_root = root / "shadow" if split_tn else root
+            if split_tn:
+                (tn_root / "tn").mkdir(parents=True)
+                for name in ["tn/processor.py", "tn/token_parser.py"]:
+                    (tn_root / name).write_bytes(b"separate TN shadow")
+            tn = types.SimpleNamespace(__file__=str(tn_root / "tn/__init__.py"))
             argv = ["export", "--bundle", str(root), "--manifest", str(manifest), "--out", str(output)]
-            with (patch.object(sys, "argv", argv), patch.dict(sys.modules, {"itn": package}),
+            with (patch.object(sys, "argv", argv), patch.dict(sys.modules, {"itn": package, "tn": tn}),
                   patch.object(export, "freeze", return_value=oracle),
                   patch.object(export, "load_cached_normalizer", return_value=normalizer) as load,
                   contextlib.redirect_stdout(io.StringIO())):
-                if changed:
+                if changed or split_tn:
                     with self.assertRaisesRegex(ValueError, "loaded oracle module differs"):
                         export.main()
                     load.assert_not_called()
@@ -58,6 +64,9 @@ class ExportSourceTests(unittest.TestCase):
 
     def test_shadow_tn_source_rejected_before_graph_construction(self):
         self.run_export("tn/processor.py")
+
+    def test_independently_resolved_tn_shadow_is_rejected(self):
+        self.run_export(split_tn=True)
 
 
 if __name__ == "__main__":

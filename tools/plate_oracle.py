@@ -47,9 +47,12 @@ def load_cached_normalizer(cache_dir, options):
 def verify_loaded_sources(source_hashes):
     """Require the imported package tree to match the frozen wheel sources."""
     import itn
-    package_root = Path(itn.__file__).resolve().parent.parent
+    import tn
+    roots = {"itn": Path(itn.__file__).resolve().parent,
+             "tn": Path(tn.__file__).resolve().parent}
     for name, expected in source_hashes.items():
-        if digest((package_root / name).read_bytes()) != expected:
+        package, relative = name.split("/", 1)
+        if digest((roots[package] / relative).read_bytes()) != expected:
             raise ValueError(f"loaded oracle module differs: {name}")
 
 

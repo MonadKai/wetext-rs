@@ -20,7 +20,10 @@ synthetic modules/graphs. Matching source bytes export; changed ITN or TN source
 must fail before a normalizer is constructed or an output directory is created.
 On the old exporter the two rejection tests fail; after reusing the oracle's
 source validator they pass. The oracle uses the same validator before importing
-its semantic functions. No graph, rule, profile parameter or frozen asset changes.
+its semantic functions. ITN and TN are separately resolved Python packages:
+validate each package's own root, including a separately shadowed TN tree.
+The additional split-root test fails the initial shared-root guard and passes
+the corrected validator. No graph, rule, profile parameter or frozen asset changes.
 
 Restricted red/green logs and original tools are preserved under
 `parret-evaluation-evidence/itn-20261019/fallback-integration-p55/`. Actual export
