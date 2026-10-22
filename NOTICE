@@ -1,0 +1,13 @@
+wetext-rs: Apache-2.0; original runtime by SpenserCai and contributors.
+
+The number_plate profile is a Rust port of the owner-provided customized
+WeTextProcessing 1.2.0+plate.1 / plate_semantic_v1_5 delivery. Original semantic
+source identity: 1afe6f9; official WeTextProcessing base: 57f8585 (v1.2.0).
+Preserved lexicon SHA256 and wheel/source attribution are recorded in
+profiles/number_plate_v1_5/oracle-manifest.json. The rule ownership, export
+recipe and full rendering order live in this fork.
+
+Unicode case/category tables are reproducibly generated from Python 3.12.7
+Unicode 15.0.0 by tools/freeze_unicode.py. NFKC uses unicode-normalization
+(MIT OR Apache-2.0) with frozen control/unassigned barriers and case/category
+policy; no tokenizer dependency is downgraded in Parret.
