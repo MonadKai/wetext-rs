@@ -287,8 +287,10 @@ This Rust implementation is designed to be compatible with the Python [wetext](h
 
 The owner fork adds `plate::PlateProfile` and `CompiledChineseItn` independently
 from the legacy automatic-language normalizer. Chinese must be selected
-explicitly by callers. Structured-only preserves unrelated text; `with_base`
-binds complete delivery rendering. Fields always come from one accepted span
+explicitly by callers. Structured-only preserves unrelated text;
+`with_request_base` selects complete full.2 delivery rendering. `with_base`
+retains legacy full.1 fragment rendering with its recorded text differences.
+Fields always come from one accepted span
 plan. Original span coordinates are UTF-8 byte offsets. A null unique plate is
 not an abstention reason.
 
@@ -299,6 +301,8 @@ The frozen wheel, options and Unicode policy live under
 oracle deliberately prime a fresh cache then reload/optimize as delivery does
 on a cache hit: initial-build and cached graphs can choose different
 same-weight numeric segmentations. The profile identity records this policy.
+Both commands verify the imported package's source hashes before constructing
+normalizers; checking distribution metadata or bundle files alone is insufficient.
 Do not replace it with an arbitrary legacy FST bundle. Rust runtime builds
 never construct or download FSTs.
 

@@ -5,7 +5,7 @@ import hashlib
 import json
 import tempfile
 from pathlib import Path
-from plate_oracle import OPTIONS, freeze, load_cached_normalizer
+from plate_oracle import OPTIONS, freeze, load_cached_normalizer, verify_loaded_sources
 
 
 def main():
@@ -17,6 +17,7 @@ def main():
     oracle = freeze(args.bundle)
     if oracle != json.loads(args.manifest.read_text()):
         raise ValueError("export oracle identity differs")
+    verify_loaded_sources(oracle["source_sha256"])
     options = {**OPTIONS, "enable_plate_semantics": False}
     args.out.mkdir(parents=True, exist_ok=False)
     with tempfile.TemporaryDirectory() as cache:

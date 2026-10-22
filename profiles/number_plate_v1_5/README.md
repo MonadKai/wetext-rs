@@ -5,8 +5,13 @@ Status: baseline `4c396e8` passes fields/plans and complete text on the frozen
 strict failures of the added plate migration renderer; nine older saved-text
 alternatives have their separate historical scope. See the local
 [migration issue](../../docs/issues/plate-request-rendering-compatibility.md).
-The candidate request renderer is under qualification, not a released profile
-or a universal executor correctness claim.
+The initial candidate qualification below retains its original cohort identity.
+Later Parret P53 adds 35,409 raw normal-final snapshots from its final full.2
+34,136-case audio run: zero field/final-plan/text oracle differences. See the
+sole Parret plan and restricted `plate-final-full2-p53/` receipts under the
+evidence root below. This does not qualify all service fault paths, real BR
+protection, independent effects or universal executor correctness; no release
+or remote publication is implied.
 
 The oracle is the delivered `wetextprocessing==1.2.0+plate.1` wheel, using
 `pynini==2.1.7`, `importlib_resources==6.5.2`, Python 3.12.7 / Unicode 15.0.0.
@@ -28,6 +33,7 @@ python tools/plate_oracle.py --bundle "$PLATE_BUNDLE" \
 python tools/plate_diff.py profiles/number_plate_v1_5/oracle-outputs.jsonl \
   /tmp/plate-oracle.jsonl --full-text
 python -m unittest discover -s tools -p test_plate_diff.py
+python -m unittest discover -s tools -p test_export_plate_fsts.py
 ```
 
 `--structured-only` does not execute full FST normalization and cannot qualify

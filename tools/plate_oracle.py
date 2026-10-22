@@ -44,6 +44,15 @@ def load_cached_normalizer(cache_dir, options):
     return InverseNormalizer(cache_dir=cache_dir, **options)
 
 
+def verify_loaded_sources(source_hashes):
+    """Require the imported package tree to match the frozen wheel sources."""
+    import itn
+    package_root = Path(itn.__file__).resolve().parent.parent
+    for name, expected in source_hashes.items():
+        if digest((package_root / name).read_bytes()) != expected:
+            raise ValueError(f"loaded oracle module differs: {name}")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--bundle", type=Path, required=True)
@@ -61,14 +70,10 @@ def main():
         parser.error("--manifest and --input required for oracle execution")
     if json.loads(args.manifest.read_text()) != current:
         raise ValueError("oracle identity differs from frozen manifest")
+    # Require the installed wheel's actual modules to match, not a shadow copy.
+    verify_loaded_sources(current["source_sha256"])
     from itn.chinese.plate.spans import plate_spans
     from itn.chinese.plate.semantics import VERSION
-    # Require the installed wheel's actual modules to match, not a shadow copy.
-    import itn
-    package_root = Path(itn.__file__).resolve().parent.parent
-    for name, expected in current["source_sha256"].items():
-        if digest((package_root / name).read_bytes()) != expected:
-            raise ValueError(f"loaded oracle module differs: {name}")
     normalizer = None
     if not args.structured_only:
         if args.cache_dir is None:

@@ -1,7 +1,10 @@
 # PLATE-MIGRATION-1: reproduce delivered complete request rendering
 
-Status: compatibility implementation verified on listed snapshot cohorts; new repaired-C
-and actual service gates remain open. No remote
+Status: compatibility implementation verified on listed snapshot cohorts. The
+initial qualification status below is historical; later Parret P53 adds repaired-C
+and final-build same-text/service evidence, summarized in the profile README.
+Independent effect, uncovered fault and overall real BR protection gates remain
+open. No remote
 issue or release. This concerns the plate migration added in this fork, not an
 established upstream wetext-rs bug or an error in number_plate_v1.0.0.
 Parret's `docs/plans/itn-multiple-implementations-plan.md` is the sole cross-repo

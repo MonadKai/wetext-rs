@@ -69,13 +69,13 @@ impl PlateProfile {
             request_rendering: false,
         })
     }
-    /// Bind exact base graphs for complete rendering order. Never inferred at runtime.
+    /// Bind exact base graphs for legacy full.1 fragment rendering.
     pub fn with_base(mut self, base: CompiledChineseItn) -> Self {
         self.base = Some(base);
         self.request_rendering = false;
         self
     }
-    /// Candidate complete delivered request-graph order; legacy full.1 stays explicit.
+    /// Bind full.2 complete delivered request-graph order; legacy full.1 stays explicit.
     pub fn with_request_base(mut self, base: CompiledChineseItn) -> Self {
         self.base = Some(base);
         self.request_rendering = true;
