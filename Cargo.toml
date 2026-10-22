@@ -2,6 +2,7 @@
 name = "wetext-rs"
 version = "0.1.2"
 edition = "2021"
+rust-version = "1.95"
 authors = ["SpenserCai <spensercai@gmail.com>"]
 description = "Text normalization library for TTS, Rust implementation of WeText"
 license = "Apache-2.0"
@@ -25,6 +26,9 @@ regex = "1"
 unicode-segmentation = "1"
 # JSON parsing for contractions data (loaded at runtime from embedded JSON)
 serde_json = "1"
+serde = { version = "1", features = ["derive"] }
+unicode-normalization = "=0.1.25"
+sha2 = "0.10.9"
 
 [dev-dependencies]
 tempfile = "3"
@@ -34,4 +38,3 @@ serde = { version = "1", features = ["derive"] }
 default = []
 # Embed FST files into the binary
 embedded-fsts = []
-

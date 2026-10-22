@@ -69,6 +69,41 @@ pub struct TokenParser {
 }
 
 impl TokenParser {
+    /// Field contract of the frozen official Chinese WeTextProcessing 1.2.0 grammar.
+    pub fn chinese_itn_v120() -> Self {
+        let mut orders = Self::itn_orders();
+        for (name, fields) in [
+            ("date", vec!["year", "month", "day", "preserve_order"]),
+            (
+                "measure",
+                vec!["numerator", "denominator", "value", "units"],
+            ),
+            ("money", vec!["currency", "value", "decimal", "quantity"]),
+            ("time", vec!["hour", "minute", "second", "noon", "zone"]),
+            ("telephone", vec!["country_code", "number_part"]),
+            ("electronic", vec!["username", "domain", "protocol"]),
+        ] {
+            orders.insert(name.into(), fields.into_iter().map(String::from).collect());
+        }
+        Self { orders }
+    }
+
+    /// Parse tagged output without the legacy pass-through fallback.
+    pub fn reorder_strict(&self, input: &str) -> Result<String> {
+        if input.is_empty() {
+            return Ok(String::new());
+        }
+        let tokens = self.parse(input)?;
+        if tokens.is_empty() {
+            return Err(WeTextError::TokenParseError("empty token plan".into()));
+        }
+        Ok(tokens
+            .iter()
+            .map(|token| token.to_string_with_order(&self.orders))
+            .collect::<Vec<_>>()
+            .join(" "))
+    }
+
     /// Create a new token parser for the given language and operator
     ///
     /// # Arguments
@@ -233,117 +268,79 @@ impl TokenParser {
     ///
     /// Expected format: `token_name { key1: "value1" key2: "value2" }`
     fn parse(&self, input: &str) -> Result<Vec<Token>> {
-        let mut tokens = Vec::new();
         let chars: Vec<char> = input.chars().collect();
-        let mut index = 0;
-
-        while index < chars.len() {
-            // Skip whitespace
-            while index < chars.len() && chars[index].is_whitespace() {
-                index += 1;
+        let mut pos = 0;
+        let mut tokens = Vec::new();
+        let error = || WeTextError::TokenParseError("malformed tagged output".into());
+        let skip = |pos: &mut usize| {
+            while *pos < chars.len() && chars[*pos].is_whitespace() {
+                *pos += 1;
             }
-
-            if index >= chars.len() {
+        };
+        while pos < chars.len() {
+            skip(&mut pos);
+            if pos == chars.len() {
                 break;
             }
-
-            // Parse token name (must be alphabetic or underscore)
-            let name_start = index;
-            while index < chars.len() && (chars[index].is_ascii_alphabetic() || chars[index] == '_')
-            {
-                index += 1;
+            let start = pos;
+            while pos < chars.len() && (chars[pos].is_ascii_alphabetic() || chars[pos] == '_') {
+                pos += 1;
             }
-            let name: String = chars[name_start..index].iter().collect();
-
-            // If no valid name found, check if we're at an unexpected character
-            if name.is_empty() {
-                // Skip unexpected characters to prevent infinite loop
-                if index < chars.len() {
-                    return Err(WeTextError::TokenParseError(format!(
-                        "Unexpected character '{}' at position {}",
-                        chars[index], index
-                    )));
-                }
-                break;
+            if start == pos {
+                return Err(error());
             }
-
-            // Skip whitespace and opening brace '{'
-            while index < chars.len() && (chars[index].is_whitespace() || chars[index] == '{') {
-                index += 1;
+            let name: String = chars[start..pos].iter().collect();
+            skip(&mut pos);
+            if chars.get(pos) != Some(&'{') {
+                return Err(error());
             }
-
+            pos += 1;
             let mut token = Token::new(&name);
-
-            // Parse key-value pairs
             loop {
-                // Skip whitespace
-                while index < chars.len() && chars[index].is_whitespace() {
-                    index += 1;
-                }
-
-                // Check for end of token or end of input
-                if index >= chars.len() || chars[index] == '}' {
-                    if index < chars.len() {
-                        index += 1; // Skip '}'
-                    }
+                skip(&mut pos);
+                if chars.get(pos) == Some(&'}') {
+                    pos += 1;
                     break;
                 }
-
-                // Parse key
-                let key_start = index;
-                while index < chars.len()
-                    && (chars[index].is_ascii_alphabetic() || chars[index] == '_')
-                {
-                    index += 1;
+                let start = pos;
+                while pos < chars.len() && (chars[pos].is_ascii_alphabetic() || chars[pos] == '_') {
+                    pos += 1;
                 }
-                let key: String = chars[key_start..index].iter().collect();
-
-                // Skip empty keys (can happen with malformed input)
-                if key.is_empty() {
-                    // Skip the problematic character to avoid infinite loop
-                    if index < chars.len() && chars[index] != '}' {
-                        index += 1;
+                if start == pos {
+                    return Err(error());
+                }
+                let key: String = chars[start..pos].iter().collect();
+                skip(&mut pos);
+                if chars.get(pos) != Some(&':') {
+                    return Err(error());
+                }
+                pos += 1;
+                skip(&mut pos);
+                if chars.get(pos) != Some(&'"') {
+                    return Err(error());
+                }
+                pos += 1;
+                let start = pos;
+                loop {
+                    match chars.get(pos) {
+                        None => return Err(error()),
+                        Some('"') => break,
+                        Some('\\') => {
+                            pos += 1;
+                            if pos == chars.len() {
+                                return Err(error());
+                            }
+                        }
+                        _ => {}
                     }
-                    continue;
+                    pos += 1;
                 }
-
-                // Skip ':' and spaces
-                while index < chars.len() && (chars[index] == ':' || chars[index] == ' ') {
-                    index += 1;
-                }
-
-                // Skip opening quote '"'
-                if index < chars.len() && chars[index] == '"' {
-                    index += 1;
-                }
-
-                // Parse value (handle escape sequences)
-                let mut value = String::new();
-                let mut escape = false;
-                while index < chars.len() && (escape || chars[index] != '"') {
-                    if escape {
-                        value.push(chars[index]);
-                        escape = false;
-                    } else if chars[index] == '\\' {
-                        escape = true;
-                        value.push(chars[index]);
-                    } else {
-                        value.push(chars[index]);
-                    }
-                    index += 1;
-                }
-
-                // Skip closing quote '"'
-                if index < chars.len() && chars[index] == '"' {
-                    index += 1;
-                }
-
+                let value: String = chars[start..pos].iter().collect();
+                pos += 1;
                 token.append(&key, &value);
             }
-
             tokens.push(token);
         }
-
         Ok(tokens)
     }
 }
@@ -366,5 +363,19 @@ mod tests {
         let parser = TokenParser::new(Language::Zh, Operator::Tn);
         assert_eq!(parser.reorder("").unwrap(), "");
         assert_eq!(parser.reorder("   ").unwrap(), "");
+    }
+
+    #[test]
+    fn v120_fields_and_wire_escapes_are_preserved() {
+        let parser = TokenParser::chinese_itn_v120();
+        assert_eq!(
+            parser
+                .reorder_strict(r#"measure { units: "千克" value: "3" }"#)
+                .unwrap(),
+            r#"measure { value: "3" units: "千克" }"#
+        );
+        let escaped = r#"char { value: "a\"b\\c" }"#;
+        assert_eq!(parser.reorder_strict(escaped).unwrap(), escaped);
+        assert!(parser.reorder_strict("not tagged output").is_err());
     }
 }

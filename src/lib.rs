@@ -21,10 +21,13 @@
 //! println!("{}", result);  // 二零二四年一月十五日
 //! ```
 
+mod compiled_itn;
 mod config;
+pub use compiled_itn::CompiledChineseItn;
 mod contractions;
 mod error;
 mod normalizer;
+pub mod plate;
 mod text_normalizer;
 mod token_parser;
 
