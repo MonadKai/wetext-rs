@@ -29,3 +29,16 @@ Restricted red/green logs and original tools are preserved under
 `parret-evaluation-evidence/itn-20261019/fallback-integration-p55/`. Actual export
 and fixture gates are recorded separately; synthetic provenance tests alone do
 not establish FST equivalence. The fix commit references this issue.
+
+## P57 complete runtime tree follow-up
+
+Round1 review found that eight CORE hashes did not bind imported generic rules
+or TSV dictionaries. Changing `itn/chinese/rules/money.py` or its symbol data
+could pass the prior source check. This is a fork-added export/oracle provenance
+defect, not evidence of a rustfst executor bug or incorrect historical assets.
+
+Bind every runtime file under the delivered wheel's `itn/` and `tn/` trees,
+verify source/installed bytes and actual loaded module origins before graph
+construction, and preserve the old manifest. Rule/dictionary mutation and
+preloaded foreign-child tests must reject; real fresh exports must reproduce
+the existing asset hashes. No semantic or FST-algorithm change is intended.

@@ -15,7 +15,11 @@ or remote publication is implied.
 
 The oracle is the delivered `wetextprocessing==1.2.0+plate.1` wheel, using
 `pynini==2.1.7`, `importlib_resources==6.5.2`, Python 3.12.7 / Unicode 15.0.0.
-The machine manifest is authoritative. Inputs contain IDs and original text
+The machine manifest is authoritative. Schema v2 binds all 332 wheel runtime
+Python/data files and the actual imported module origins. The prior eight-file
+manifest is preserved as `oracle-manifest.v1.json` for historical provenance;
+new oracle/export commands require the v2 manifest. Existing FST assets and
+raw-text outputs are not reinterpreted or overwritten. Inputs contain IDs and original text
 only; expected plates, reference labels and dataset categories never enter
 the algorithm. The result schema includes the delivered four fields plus
 independently observable accepted/literal spans in original UTF-8 byte ranges.

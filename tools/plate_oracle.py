@@ -6,6 +6,7 @@ import hashlib
 import importlib.metadata
 import json
 import platform
+import sys
 import zipfile
 from pathlib import Path
 
@@ -25,11 +26,14 @@ def freeze(bundle):
     wheel = bundle / "itn/wetextprocessing-1.2.0+plate.1-py3-none-any.whl"
     source = bundle / "itn/WeTextProcessing"
     with zipfile.ZipFile(wheel) as archive:
-        hashes = {name: digest(archive.read(name)) for name in CORE}
+        hashes = {name: digest(archive.read(name)) for name in sorted(archive.namelist())
+                  if name.startswith(("itn/", "tn/")) and not name.endswith("/")}
+        if not set(CORE) <= hashes.keys():
+            raise ValueError("wheel is missing required plate sources")
         for name, expected in hashes.items():
             if digest((source / name).read_bytes()) != expected:
                 raise ValueError(f"source differs from wheel: {name}")
-    return dict(schema="wetext.plate-oracle.v1", wheel_sha256=digest(wheel.read_bytes()),
+    return dict(schema="wetext.plate-oracle.v2", wheel_sha256=digest(wheel.read_bytes()),
                 package="1.2.0+plate.1", semantic_version="plate_semantic_v1_5",
                 options=OPTIONS, base_cache_mode="reload_then_optimize", source_sha256=hashes,
                 dependencies={name: importlib.metadata.version(name) for name in
@@ -37,9 +41,10 @@ def freeze(bundle):
                 python=platform.python_version(), unicode=__import__("unicodedata").unidata_version)
 
 
-def load_cached_normalizer(cache_dir, options):
+def load_cached_normalizer(cache_dir, options, *, source_hashes):
     """Freeze delivery cache-hit behavior; cold-build tie ordering can differ."""
     from itn.chinese.inverse_normalizer import InverseNormalizer
+    verify_loaded_sources(source_hashes)
     InverseNormalizer(cache_dir=cache_dir, **options)
     return InverseNormalizer(cache_dir=cache_dir, **options)
 
@@ -53,6 +58,18 @@ def verify_loaded_sources(source_hashes):
     for name, expected in source_hashes.items():
         package, relative = name.split("/", 1)
         if digest((roots[package] / relative).read_bytes()) != expected:
+            raise ValueError(f"loaded oracle module differs: {name}")
+    for name, module in tuple(sys.modules.items()):
+        package = name.split(".", 1)[0]
+        if package not in roots:
+            continue
+        relative = name.replace(".", "/")
+        candidate = relative + "/__init__.py"
+        if candidate not in source_hashes:
+            candidate = relative + ".py"
+        expected = roots[package].parent / candidate
+        actual = getattr(module, "__file__", None)
+        if candidate not in source_hashes or not actual or Path(actual).resolve() != expected.resolve():
             raise ValueError(f"loaded oracle module differs: {name}")
 
 
@@ -77,11 +94,13 @@ def main():
     verify_loaded_sources(current["source_sha256"])
     from itn.chinese.plate.spans import plate_spans
     from itn.chinese.plate.semantics import VERSION
+    verify_loaded_sources(current["source_sha256"])
     normalizer = None
     if not args.structured_only:
         if args.cache_dir is None:
             parser.error("--cache-dir required for full text")
-        normalizer = load_cached_normalizer(args.cache_dir, OPTIONS)
+        normalizer = load_cached_normalizer(args.cache_dir, OPTIONS,
+                                            source_hashes=current["source_sha256"])
     ids = set()
     with args.input.open() as stream:
         for number, line in enumerate(stream, 1):

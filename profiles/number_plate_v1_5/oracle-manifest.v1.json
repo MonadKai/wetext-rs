@@ -1,0 +1,31 @@
+{
+  "schema": "wetext.plate-oracle.v1",
+  "wheel_sha256": "8cf7b2633c91d227b702c7746571b62e81d9c26379dade4cd3b2cb38cc230d69",
+  "package": "1.2.0+plate.1",
+  "semantic_version": "plate_semantic_v1_5",
+  "options": {
+    "remove_interjections": true,
+    "enable_standalone_number": true,
+    "enable_0_to_9": false,
+    "enable_million": false,
+    "enable_plate_semantics": true
+  },
+  "source_sha256": {
+    "itn/chinese/inverse_normalizer.py": "bbfb7b8b0345f4873e6d6156fddde9f1e9ab1ef0df95c3ea8f314d35bde5f809",
+    "itn/chinese/plate/semantics.py": "2a7372061f99004aac81bc06f29c398d97396806c7cae2dbb64084a81a2edce7",
+    "itn/chinese/plate/spans.py": "07a806bfb4318376778a7ebe64f016558f563dfa964f9d0a708e75170f9fe614",
+    "itn/chinese/plate/lexicon.json": "e8eeee6c7ddb651e6708a5dc49ceb688addfc2a612f50c015ad390e2142c15c9",
+    "itn/chinese/plate/rule.py": "419bf279dbe93396e86b232c2433c391bcad7303fa11f3a93dc5ea06baec9259",
+    "itn/chinese/plate/fixtures.json": "b7dce7a53a623578f5e1bdf1b3b16431dcaaa87c20e2287eb73ddad96c336e25",
+    "tn/processor.py": "babd9edbf176a5ba85e477371d3b6ea641204f7d02b47c25a833abdd779131e4",
+    "tn/token_parser.py": "cefcd6422cfff8ee8b3ef00ed7bc37e7b5bf9b66f0faea40dcde8d99d3ccecb7"
+  },
+  "dependencies": {
+    "pynini": "2.1.7",
+    "importlib_resources": "6.5.2",
+    "WeTextProcessing": "1.2.0+plate.1"
+  },
+  "python": "3.12.7",
+  "unicode": "15.0.0",
+  "base_cache_mode": "reload_then_optimize"
+}

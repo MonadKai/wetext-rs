@@ -2,6 +2,7 @@
 name = "wetext-rs"
 version = "0.1.2"
 edition = "2021"
+rust-version = "1.95"
 authors = ["SpenserCai <spensercai@gmail.com>"]
 description = "Text normalization library for TTS, Rust implementation of WeText"
 license = "Apache-2.0"

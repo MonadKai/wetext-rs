@@ -21,7 +21,7 @@ def main():
     options = {**OPTIONS, "enable_plate_semantics": False}
     args.out.mkdir(parents=True, exist_ok=False)
     with tempfile.TemporaryDirectory() as cache:
-        normalizer = load_cached_normalizer(cache, options)
+        normalizer = load_cached_normalizer(cache, options, source_hashes=oracle["source_sha256"])
         for role, fst in [("tagger", normalizer.tagger), ("verbalizer", normalizer.verbalizer)]:
             fst.write(str(args.out / f"zh_itn_{role}.fst"))
     files = {path.name: dict(size=path.stat().st_size, sha256=hashlib.sha256(path.read_bytes()).hexdigest())

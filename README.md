@@ -3,7 +3,10 @@
 [![Crates.io](https://img.shields.io/crates/v/wetext-rs.svg)](https://crates.io/crates/wetext-rs)
 [![Documentation](https://docs.rs/wetext-rs/badge.svg)](https://docs.rs/wetext-rs)
 [![License](https://img.shields.io/crates/l/wetext-rs.svg)](https://github.com/SpenserCai/wetext-rs/blob/main/LICENSE)
-[![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)](https://www.rust-lang.org)
+[![Rust](https://img.shields.io/badge/rust-1.95%2B-orange.svg)](https://www.rust-lang.org)
+
+This owner fork is qualified with Rust 1.95.0 and its committed lockfile.
+Earlier compiler versions are not part of the fork's current support contract.
 
 A Rust implementation of [WeText](https://github.com/pengzhendong/wetext) for text normalization in TTS (Text-to-Speech) applications.
 
