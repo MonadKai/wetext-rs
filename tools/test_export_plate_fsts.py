@@ -29,7 +29,7 @@ class ExportSourceTests(unittest.TestCase):
                     path = source / name
                     path.parent.mkdir(parents=True, exist_ok=True)
                     path.write_bytes(name.encode())
-            with patch("plate_oracle.importlib.metadata.version", return_value="synthetic"):
+            with patch("plate_oracle.importlib.metadata.version", return_value="1.2.0+plate.1"):
                 manifest = freeze(bundle)
                 self.assertTrue(set(extra) <= manifest["source_sha256"].keys())
                 for name in extra:
@@ -39,6 +39,27 @@ class ExportSourceTests(unittest.TestCase):
                         with self.assertRaisesRegex(ValueError, "source differs from wheel"):
                             freeze(bundle)
                         path.write_bytes(name.encode())
+
+    def test_explicit_plate4_wheel_binds_release_context_and_installed_version(self):
+        with tempfile.TemporaryDirectory() as directory:
+            wheel = Path(directory) / "plate4.whl"
+            release = {"package_version": "1.2.0+plate.4", "plate_version": "plate_semantic_v1_6"}
+            with zipfile.ZipFile(wheel, "w") as archive:
+                for name in [*CORE, "itn/chinese/plate/context.py"]:
+                    archive.writestr(name, name.encode())
+                archive.writestr("itn/chinese/plate/release.json", json.dumps(release))
+            with (patch("plate_oracle.importlib.metadata.version", return_value="1.2.0+plate.4"),
+                  patch("plate_oracle.unicodedata.unidata_version", "15.0.0")):
+                manifest = freeze(wheel=wheel)
+            self.assertEqual(manifest["semantic_version"], "plate_semantic_v1_6")
+            self.assertIn("itn/chinese/plate/context.py", manifest["source_sha256"])
+            with patch("plate_oracle.importlib.metadata.version", return_value="1.2.0+plate.3"):
+                with self.assertRaisesRegex(ValueError, "installed oracle package version"):
+                    freeze(wheel=wheel)
+            with (patch("plate_oracle.importlib.metadata.version", return_value="1.2.0+plate.4"),
+                  patch("plate_oracle.unicodedata.unidata_version", "14.0.0")):
+                with self.assertRaisesRegex(ValueError, "frozen Unicode 15"):
+                    freeze(wheel=wheel)
 
     def run_export(self, changed=None, split_tn=False, shadow_child=False):
         with tempfile.TemporaryDirectory() as directory:

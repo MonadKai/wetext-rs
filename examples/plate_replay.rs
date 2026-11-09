@@ -12,13 +12,21 @@ struct Input {
 }
 
 fn main() -> anyhow::Result<()> {
-    let args: Vec<_> = std::env::args().skip(1).collect();
-    let mut profile =
-        PlateProfile::structured(include_str!("../profiles/number_plate_v1_5/lexicon.json"))?;
+    let mut args: Vec<_> = std::env::args().skip(1).collect();
+    let plate4 = args.first().is_some_and(|arg| arg == "--plate4");
+    if plate4 {
+        args.remove(0);
+    }
+    let lexicon = include_str!("../profiles/number_plate_v1_5/lexicon.json");
+    let mut profile = if plate4 {
+        PlateProfile::structured_plate4(lexicon)?
+    } else {
+        PlateProfile::structured(lexicon)?
+    };
     if !args.is_empty() {
         anyhow::ensure!(
             args.len() == 3 && matches!(args[0].as_str(), "--full" | "--full-request"),
-            "usage: plate_replay [--full|--full-request tagger.fst verbalizer.fst]"
+            "usage: plate_replay [--plate4] [--full|--full-request tagger.fst verbalizer.fst]"
         );
         let base = CompiledChineseItn::from_files(Path::new(&args[1]), Path::new(&args[2]))?;
         profile = if args[0] == "--full-request" {

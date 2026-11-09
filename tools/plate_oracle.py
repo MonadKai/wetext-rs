@@ -7,6 +7,7 @@ import importlib.metadata
 import json
 import platform
 import sys
+import unicodedata
 import zipfile
 from pathlib import Path
 
@@ -22,23 +23,35 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def freeze(bundle):
-    wheel = bundle / "itn/wetextprocessing-1.2.0+plate.1-py3-none-any.whl"
-    source = bundle / "itn/WeTextProcessing"
+def freeze(bundle=None, *, wheel=None):
+    explicit_wheel = wheel is not None
+    if wheel is None:
+        wheel = bundle / "itn/wetextprocessing-1.2.0+plate.1-py3-none-any.whl"
+    source = None if explicit_wheel else bundle / "itn/WeTextProcessing"
     with zipfile.ZipFile(wheel) as archive:
         hashes = {name: digest(archive.read(name)) for name in sorted(archive.namelist())
                   if name.startswith(("itn/", "tn/")) and not name.endswith("/")}
         if not set(CORE) <= hashes.keys():
             raise ValueError("wheel is missing required plate sources")
-        for name, expected in hashes.items():
-            if digest((source / name).read_bytes()) != expected:
-                raise ValueError(f"source differs from wheel: {name}")
+        if source is not None:
+            for name, expected in hashes.items():
+                if digest((source / name).read_bytes()) != expected:
+                    raise ValueError(f"source differs from wheel: {name}")
+        release = json.loads(archive.read("itn/chinese/plate/release.json")) if explicit_wheel else None
+    package = release["package_version"] if release else "1.2.0+plate.1"
+    semantic_version = release["plate_version"] if release else "plate_semantic_v1_5"
+    if explicit_wheel and (package != "1.2.0+plate.4" or semantic_version != "plate_semantic_v1_6"):
+        raise ValueError("explicit wheel must be the plate.4 default-behavior delivery")
+    if importlib.metadata.version("WeTextProcessing") != package:
+        raise ValueError("installed oracle package version differs from wheel")
+    if explicit_wheel and unicodedata.unidata_version != "15.0.0":
+        raise ValueError("plate.4 oracle requires the profile's frozen Unicode 15.0.0 (Python 3.12)")
     return dict(schema="wetext.plate-oracle.v2", wheel_sha256=digest(wheel.read_bytes()),
-                package="1.2.0+plate.1", semantic_version="plate_semantic_v1_5",
+                package=package, semantic_version=semantic_version,
                 options=OPTIONS, base_cache_mode="reload_then_optimize", source_sha256=hashes,
                 dependencies={name: importlib.metadata.version(name) for name in
                               ["pynini", "importlib_resources", "WeTextProcessing"]},
-                python=platform.python_version(), unicode=__import__("unicodedata").unidata_version)
+                python=platform.python_version(), unicode=unicodedata.unidata_version)
 
 
 def load_cached_normalizer(cache_dir, options, *, source_hashes):
@@ -75,14 +88,16 @@ def verify_loaded_sources(source_hashes):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--bundle", type=Path, required=True)
+    delivery = parser.add_mutually_exclusive_group(required=True)
+    delivery.add_argument("--bundle", type=Path)
+    delivery.add_argument("--wheel", type=Path)
     parser.add_argument("--freeze", action="store_true")
     parser.add_argument("--manifest", type=Path)
     parser.add_argument("--input", type=Path)
     parser.add_argument("--cache-dir", type=Path)
     parser.add_argument("--structured-only", action="store_true")
     args = parser.parse_args()
-    current = freeze(args.bundle)
+    current = freeze(args.bundle, wheel=args.wheel)
     if args.freeze:
         print(json.dumps(current, ensure_ascii=False, indent=2))
         return

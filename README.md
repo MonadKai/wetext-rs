@@ -288,6 +288,12 @@ This Rust implementation is designed to be compatible with the Python [wetext](h
 
 ## Delivery plate profiles
 
+`PlateProfile::structured_plate4` selects the default, context-free
+`plate_semantic_v1_6` behavior from WeTextProcessing `1.2.0+plate.4`.
+Combine it with `with_request_base` for full text. See
+[the plate.4 profile](profiles/number_plate_v1_6/README.md).
+The original `structured` constructor retains v1.5 rules.
+
 The owner fork adds `plate::PlateProfile` and `CompiledChineseItn` independently
 from the legacy automatic-language normalizer. Chinese must be selected
 explicitly by callers. Structured-only preserves unrelated text;

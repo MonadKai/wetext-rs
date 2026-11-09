@@ -52,6 +52,16 @@ macro_rules! rules {
 rules! {
     stop: r"^(?:记下来了吗|记下来了|记下来吧|记录了吗|记录好了|记好了|记住了吗|记一下|开的是|开过去)",
     anchor: r"^([A-Z]{1,2})的([A-Z])",
+    anchor_plate4: r"^([A-Z]{1,26})的([A-Z])",
+    literal_city: r"^([A-Z])([A-Z]{2,26})的([A-Z])",
+    city_repeat: r"^(?:两|二|2)[|]*个",
+    plate_start: r"(?:车牌(?:号(?:码)?)?|牌照)(?:是|为)?[|]*(?:那个[|]*)?$",
+    leading_fillers: r"^(?:[|]|嗯|呃|那个|是那个)*$",
+    special_prefix: r"(?:W[|]*J|应急|使|领)[|]*$",
+    ordinary_plate4: r"^[京津沪渝冀豫云辽黑湘皖鲁新苏浙赣鄂桂甘晋蒙陕吉闽贵粤青藏川宁琼][A-HJ-NP-Z][A-HJ-NP-Z0-9]{5}$",
+    suffix_plate4: r"^[京津沪渝冀豫云辽黑湘皖鲁新苏浙赣鄂桂甘晋蒙陕吉闽贵粤青藏川宁琼][A-HJ-NP-Z][A-HJ-NP-Z0-9]{4}[学挂]$",
+    police_plate4: r"^[京津沪渝冀豫云辽黑湘皖鲁新苏浙赣鄂桂甘晋蒙陕吉闽贵粤青藏川宁琼][A-HJ-NP-Z][A-D0-9][0-9]{3}警$",
+    border_plate4: r"^粤Z[0-9]{4}[港澳]$",
     identity: r"^([A-Z])[|]*(?:也[|]*就[|]*是|就[|]*是)[|]*字[|]*母[|]*([A-Z])",
     alias_identity: r"^(?:也就是|也就是字母|就是字母|也就是数字|就是数字)(?:字母|数字)?([A-Z零〇一二两三四五六七八九幺0-9])",
     kind: r"^(大[|]*写[|]*字[|]*母|字[|]*母|大[|]*写[|]*的|大[|]*写|数[|]*字)",
@@ -119,6 +129,7 @@ struct Alias {
     values: BTreeSet<char>,
 }
 pub(super) struct Semantics {
+    plate4: bool,
     pub lexicon_sha256: String,
     pub unicode: UnicodePolicy,
     pub rules: Rules,
@@ -136,6 +147,7 @@ pub(super) struct Candidate {
     pub ambiguous: bool,
     pub unresolved: bool,
     pub complete: bool,
+    protected: bool,
 }
 #[derive(Clone, Copy, PartialEq)]
 pub(super) enum Status {
@@ -186,6 +198,15 @@ impl Semantics {
         Ok(())
     }
     pub fn new(json: &str) -> Result<Self> {
+        Self::with_revision(json, false)
+    }
+    pub fn plate4(json: &str) -> Result<Self> {
+        Self::with_revision(json, true)
+    }
+    pub fn is_plate4(&self) -> bool {
+        self.plate4
+    }
+    fn with_revision(json: &str, plate4: bool) -> Result<Self> {
         let lex: Lexicon =
             serde_json::from_str(json).map_err(|e| WeTextError::InvalidProfile(e.to_string()))?;
         if lex.excluded_positive_letters != ["I", "O"]
@@ -243,6 +264,9 @@ impl Semantics {
         ] {
             values.insert(word.into(), symbols.chars().collect());
         }
+        if plate4 {
+            values.insert("圈".into(), "Q0".chars().collect());
+        }
         let mut aliases = Vec::new();
         for (key, values) in values {
             let pattern = if key == "DOUBLEU" {
@@ -292,6 +316,7 @@ impl Semantics {
         use sha2::Digest;
         let lexicon_sha256 = format!("{:x}", sha2::Sha256::digest(json.as_bytes()));
         Ok(Self {
+            plate4,
             lexicon_sha256,
             unicode,
             rules: Rules::new()?,
@@ -378,8 +403,13 @@ impl Semantics {
                 });
             }
         }
-        if let Some(m) = self.rules.anchor.captures(tail) {
-            if m[1].contains(&m[2]) {
+        let anchor = if self.plate4 {
+            &self.rules.anchor_plate4
+        } else {
+            &self.rules.anchor
+        };
+        if let Some(m) = anchor.captures(tail) {
+            if m[1].contains(&m[2]) && (!self.plate4 || kind != Kind::Digit) {
                 return Some(Atom {
                     value: m[2].into(),
                     end: p + m.get(0)?.end(),
@@ -538,11 +568,31 @@ impl Semantics {
     }
 
     fn valid(&self, value: &str) -> bool {
+        if self.plate4 {
+            let letters = value
+                .chars()
+                .skip(2)
+                .filter(|c| c.is_ascii_alphabetic())
+                .count();
+            if self.rules.ordinary_plate4.is_match(value) {
+                return letters <= 2;
+            }
+            if self.rules.suffix_plate4.is_match(value) {
+                return letters <= 2;
+            }
+            if self.rules.police_plate4.is_match(value) || self.rules.border_plate4.is_match(value)
+            {
+                return true;
+            }
+        }
         if !self.rules.valid.is_match(value) {
             return false;
         }
         let body: String = value.chars().skip(2).collect();
         if nchar(&body) == 5 {
+            if self.plate4 {
+                return false;
+            }
             return if let Some(digits) = body.strip_suffix('学') {
                 digits.chars().all(|c| c.is_ascii_digit())
             } else {
@@ -553,7 +603,50 @@ impl Semantics {
         self.rules.energy.is_match(&body)
     }
 
-    fn head(&self, s: &str, p: usize) -> Option<Atom> {
+    fn city(&self, s: &str, q: usize, aliases: bool, literal_city: bool) -> Option<Atom> {
+        if aliases && s[q..].starts_with(['建', '借', '界']) {
+            return Some(Atom {
+                value: "J".into(),
+                end: q + 3,
+                ambiguous: false,
+            });
+        }
+        if literal_city {
+            if let Some(m) = self.rules.literal_city.captures(&s[q..]) {
+                if m[2].contains(&m[3]) {
+                    return Some(Atom {
+                        value: m[1].into(),
+                        end: q + 1,
+                        ambiguous: false,
+                    });
+                }
+            }
+        }
+        if self.plate4 {
+            if let Some(m) = self.rules.city_repeat.find(&s[q..]) {
+                if let Some(mut a) = self.atom(s, q + m.end(), Kind::Letter, false) {
+                    if !a.ambiguous && nchar(&a.value) == 1 && !"IO".contains(&a.value) {
+                        a.value = a.value.repeat(2);
+                        return Some(a);
+                    }
+                }
+            }
+        }
+        self.atom(s, q, Kind::Letter, false)
+    }
+
+    fn head(&self, s: &str, p: usize, aliases: bool, literal_city: bool) -> Option<Atom> {
+        if aliases {
+            for (raw, value) in [("黑翼", "黑E"), ("黑地", "黑D")] {
+                if s[p..].starts_with(raw) {
+                    return Some(Atom {
+                        value: value.into(),
+                        end: p + raw.len(),
+                        ambiguous: false,
+                    });
+                }
+            }
+        }
         for (name, province) in &self.heads {
             if s[p..].starts_with(name) {
                 let mut q = skip(s, p + name.len());
@@ -566,8 +659,8 @@ impl Semantics {
                         q = skip(s, q + extra.len());
                     }
                 }
-                if let Some(atom) = self.atom(s, q, Kind::Letter, false) {
-                    if nchar(&atom.value) == 1 {
+                if let Some(atom) = self.city(s, q, aliases, literal_city) {
+                    if nchar(&atom.value) == 1 || self.plate4 && nchar(&atom.value) == 2 {
                         let raw = &s[q..atom.end];
                         if self.aliases.iter().any(|a| a.key == raw)
                             && atom.end < s.len()
@@ -589,7 +682,39 @@ impl Semantics {
     }
 
     pub fn scan(&self, s: &str, start: usize) -> Option<Candidate> {
-        let h = self.head(s, start)?;
+        self.scan_city(s, start, false)
+    }
+
+    fn special_suffix<'a>(&self, s: &'a str, pos: usize) -> Option<&'a str> {
+        for suffix in ["应急", "警", "学", "挂", "港", "澳", "领", "使", "试", "超"] {
+            if !s[pos..].starts_with(suffix) {
+                continue;
+            }
+            let end = pos + suffix.len();
+            if end == s.len()
+                || s.as_bytes()[end] == b'|'
+                || self.rules.stop.is_match(&s[end..])
+                || ["和", "以及", "还有"].iter().any(|join| {
+                    s[end..].starts_with(join)
+                        && self
+                            .head(s, skip(s, end + join.len()), false, false)
+                            .is_some()
+                })
+            {
+                return Some(&s[pos..end]);
+            }
+        }
+        None
+    }
+
+    fn scan_city(&self, s: &str, start: usize, literal_city: bool) -> Option<Candidate> {
+        let before = prefix(s, start, 24);
+        let aliases = self.plate4
+            && (s[..start].chars().count() <= 24 && self.rules.leading_fillers.is_match(before)
+                || self.rules.plate_start.is_match(before));
+        let h = self.head(s, start, aliases, literal_city)?;
+        let protected = self.plate4 && self.rules.special_prefix.is_match(before);
+        let head_end = h.end;
         let mut value = h.value;
         let mut p = h.end;
         let mut end = p;
@@ -599,7 +724,16 @@ impl Semantics {
             if q >= s.len() {
                 break;
             }
-            if s[q..].starts_with('学') && nchar(&value) == 6 {
+            if self.plate4 {
+                if let Some(suffix) = self.special_suffix(s, q) {
+                    if q == p || nchar(&value) < 7 {
+                        value.push_str(suffix);
+                        end = q + suffix.len();
+                        break;
+                    }
+                }
+            }
+            if !self.plate4 && s[q..].starts_with('学') && nchar(&value) == 6 {
                 value.push('学');
                 p = q + '学'.len_utf8();
                 end = p;
@@ -616,11 +750,17 @@ impl Semantics {
                     continue;
                 }
             }
-            if self.head(s, q).is_some()
+            if self.head(s, q, false, false).is_some()
                 || self.rules.correction_at.is_match(&s[q..])
                 || nchar(&value) >= 7 && s[q..].starts_with("最后是")
             {
                 break;
+            }
+            if self.plate4 && nchar(&value) >= 7 && s[q..].starts_with('圈') {
+                let after = q + '圈'.len_utf8();
+                if q != p || after < s.len() && s.as_bytes()[after] != b'|' {
+                    break;
+                }
             }
             if let Some(atom) = self.unit(s, q) {
                 value.push_str(&atom.value);
@@ -637,6 +777,18 @@ impl Semantics {
             }
             break;
         }
+        if self.plate4
+            && !literal_city
+            && !protected
+            && s[start..head_end].contains('的')
+            && !self.valid(&value)
+        {
+            if let Some(alternative) = self.scan_city(s, start, true) {
+                if !alternative.ambiguous && self.valid(&alternative.value) {
+                    return Some(alternative);
+                }
+            }
+        }
         Some(Candidate {
             value,
             start,
@@ -644,6 +796,7 @@ impl Semantics {
             ambiguous,
             unresolved: false,
             complete: false,
+            protected,
         })
     }
 
@@ -736,7 +889,7 @@ impl Semantics {
             }
             c.unresolved = self.rules.correction.is_match(&clean)
                 || self.rules.uncertain.is_match(prefix(s, c.start, 16));
-            c.complete = self.valid(&c.value) && !c.ambiguous;
+            c.complete = self.valid(&c.value) && !c.ambiguous && !c.protected;
         }
         let mut active: Vec<&Candidate> = Vec::new();
         for candidate in &candidates {

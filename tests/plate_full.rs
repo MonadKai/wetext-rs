@@ -3,6 +3,37 @@ use std::path::PathBuf;
 use wetext_rs::{plate::PlateProfile, CompiledChineseItn};
 
 #[test]
+#[ignore = "requires frozen cached export assets"]
+fn plate4_complete_text_preserves_business_content_and_rejection() {
+    let base = CompiledChineseItn::from_files(
+        &PathBuf::from(std::env::var("WETEXT_TAGGER").unwrap()),
+        &PathBuf::from(std::env::var("WETEXT_VERBALIZER").unwrap()),
+    )
+    .unwrap();
+    let mut engine =
+        PlateProfile::structured_plate4(include_str!("../profiles/number_plate_v1_5/lexicon.json"))
+            .unwrap()
+            .with_request_base(base);
+    for (raw, text, plate) in [
+        (
+            "沪建E幺零T五，金额三百元",
+            "沪JE10T5，金额¥300",
+            Some("沪JE10T5"),
+        ),
+        ("WJ京A12345，金额三百元", "WJ京A12345，金额¥300", None),
+        (
+            "黑F零七二八警，二零二六年九月三十日",
+            "黑F0728警，2026/09/30",
+            Some("黑F0728警"),
+        ),
+    ] {
+        let result = engine.normalize(raw).unwrap();
+        assert_eq!(result.text, text, "{raw}");
+        assert_eq!(result.plate.as_deref(), plate, "{raw}");
+    }
+}
+
+#[test]
 #[ignore = "requires WETEXT_TAGGER and WETEXT_VERBALIZER from the frozen cached export"]
 fn frozen_full_text_and_cache_path_order_match_oracle() {
     check_frozen(false);
