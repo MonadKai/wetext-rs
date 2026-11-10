@@ -7,6 +7,11 @@ Preserved lexicon SHA256 and wheel/source attribution are recorded in
 profiles/number_plate_v1_5/oracle-manifest.json. The rule ownership, export
 recipe and full rendering order live in this fork.
 
+The context-free plate.4 profile also ports the owner's Apache-2.0
+WeTextProcessing 1.2.0+plate.4 / plate_semantic_v1_6 changes, source
+caf4a6a6fdf81bcba2c7c9c60047f9382ce8ea50. Wheel attribution and the supported
+entrypoint are recorded in profiles/number_plate_v1_6/README.md.
+
 Unicode case/category tables are reproducibly generated from Python 3.12.7
 Unicode 15.0.0 by tools/freeze_unicode.py. NFKC uses unicode-normalization
 (MIT OR Apache-2.0) with frozen control/unassigned barriers and case/category

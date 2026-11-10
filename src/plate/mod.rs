@@ -12,6 +12,9 @@ use std::sync::Arc;
 /// Semantic behavior identity, separate from executable and result schema.
 pub const PLATE_SEMANTIC_VERSION: &str = "plate_semantic_v1_5";
 
+/// Default, context-free behavior from WeTextProcessing 1.2.0+plate.4.
+pub const PLATE4_SEMANTIC_VERSION: &str = "plate_semantic_v1_6";
+
 /// Accepted/literal plan with original UTF-8 byte coordinates, never guessed offsets.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -52,7 +55,7 @@ impl PlateProfile {
         use sha2::Digest;
         let mut parameters = serde_json::json!({"rendering":if self.has_full_text() {"full_text"} else {"structured_only"},
             "unicode":"15.0.0","unicode_policy_sha256":format!("{:x}",sha2::Sha256::digest(include_bytes!("../../profiles/number_plate_v1_5/unicode-15.json"))),
-            "semantic_version":PLATE_SEMANTIC_VERSION,"max_explicit_kind_nesting":64});
+            "semantic_version":self.semantic_version(),"max_explicit_kind_nesting":64});
         if self.has_full_text() {
             parameters["base"] = CompiledChineseItn::delivery_parameters();
         }
@@ -68,6 +71,21 @@ impl PlateProfile {
             base: None,
             request_rendering: false,
         })
+    }
+    /// Plate.4 without PlateContext, conversation state or inferred business hints.
+    pub fn structured_plate4(lexicon_json: &str) -> Result<Self> {
+        Ok(Self {
+            semantics: Arc::new(Semantics::plate4(lexicon_json)?),
+            base: None,
+            request_rendering: false,
+        })
+    }
+    fn semantic_version(&self) -> &'static str {
+        if self.semantics.is_plate4() {
+            PLATE4_SEMANTIC_VERSION
+        } else {
+            PLATE_SEMANTIC_VERSION
+        }
     }
     /// Bind exact base graphs for legacy full.1 fragment rendering.
     pub fn with_base(mut self, base: CompiledChineseItn) -> Self {
@@ -134,7 +152,7 @@ impl PlateProfile {
                     None
                 },
                 plates,
-                version: PLATE_SEMANTIC_VERSION.into(),
+                version: self.semantic_version().into(),
             });
         }
         let mut text = String::new();
@@ -158,7 +176,7 @@ impl PlateProfile {
                 None
             },
             plates,
-            version: PLATE_SEMANTIC_VERSION.into(),
+            version: self.semantic_version().into(),
         })
     }
     fn base_text(&mut self, text: &str) -> Result<String> {

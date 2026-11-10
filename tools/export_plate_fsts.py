@@ -10,11 +10,13 @@ from plate_oracle import OPTIONS, freeze, load_cached_normalizer, verify_loaded_
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--bundle", type=Path, required=True)
+    delivery = parser.add_mutually_exclusive_group(required=True)
+    delivery.add_argument("--bundle", type=Path)
+    delivery.add_argument("--wheel", type=Path)
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
-    oracle = freeze(args.bundle)
+    oracle = freeze(args.bundle, wheel=args.wheel)
     if oracle != json.loads(args.manifest.read_text()):
         raise ValueError("export oracle identity differs")
     verify_loaded_sources(oracle["source_sha256"])
